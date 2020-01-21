@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>jsx在线测试</title>
+</head>
+
+<body>
+
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <script type="text/jsx" data-presets="es2016,react">
+        /*在runtime时, babel转译器将对每一个节点都执行在编译注释(Pragma)中声明的函数*/
+        /** @jsx h */
+        const h = (type, attributes, ...args) => { 
+            let children = args.length ? [...args] : null;
+            
+            return {
+                type,
+                props:{
+                    ...attributes,
+                    children
+                }
+            }
+        }
+        let foo = (
+            <div data-id="111">
+                <p>test</p>
+                hello world
+            </div>
+        );
+        console.log(foo);
+        /** @jsx Didact.createElement */
+        const Didact = {
+            createElement: (type, config, ...eles) => {
+                console.log(type,config,eles);
+            }
+        };
+    </script>
+    <script>
+        /* 获取 所有 dom 节点的 类型 以及值 */
+        // 实际 就是从 Node 这个 构造函数 中 存储了 对应的 值
+        const nodeTypes = Object.keys(Node);
+        console.log(nodeTypes);
+
+        /* 需要知道所有的 浏览器 内置 标签值，创建的时候需要用到，用这里的进行 判定*/
+        const tagNames = 'a|abbr|address|area|article|aside|audio|b|base|bdi|bdo|big|blockquote|body|br|button|canvas|caption|cite|code|col|colgroup|data|datalist|dd|del|details|dfn|dialog|div|dl|dt|em|embed|fieldset|figcaption|figure|footer|form|h1|h2|h3|h4|h5|h6|head|header|hgroup|hr|html|i|iframe|img|input|ins|kbd|keygen|label|legend|li|link|main|map|mark|menu|menuitem|meta|meter|nav|noscript|object|ol|optgroup|option|output|p|param|picture|pre|progress|q|rp|rt|ruby|s|samp|script|section|select|small|source|span|strong|style|sub|summary|sup|table|tbody|td|textarea|tfoot|th|thead|time|title|tr|track|u|ul|var|video|wbr|circle|clipPath|defs|ellipse|g|image|line|linearGradient|mask|path|pattern|polygon|polyline|radialGradient|rect|stop|svg|text|tspan';
+
+
+        /* 这个函数的 用法： requestIdleCallback */
+        let nextUnitOfWork = null
+
+        function workLoop(deadline) {
+            let shouldYield = false
+            while (nextUnitOfWork && !shouldYield) {
+                nextUnitOfWork = performUnitOfWork(
+                    nextUnitOfWork
+                )
+                shouldYield = deadline.timeRemaining() < 1
+            }
+            requestIdleCallback(workLoop)
+        }
+
+        requestIdleCallback(workLoop)
+
+        function performUnitOfWork(nextUnitOfWork) {
+            // TODO
+        }
+
+        window.requestIdleCallback = window.requestIdleCallback || function (handler) {
+            let startTime = Date.now();
+
+            return setTimeout(function () {
+                handler({
+                    didTimeout: false,
+                    timeRemaining: function () {
+                        return Math.max(0, 50.0 - (Date.now() - startTime));
+                    }
+                });
+            }, 1);
+        }
+    </script>
+</body>
+
+</html>
