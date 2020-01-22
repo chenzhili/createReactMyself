@@ -9,6 +9,47 @@ let startButtonElem = document.getElementById("startButton");
 let logElem = document.getElementById("log");
 let logFragment = null;
 let statusRefreshScheduled = false;
+
+
+/* 测试 同时 执行 两个 requestAnimationFrame 是否是 在 同一个 event loop*/
+/* 
+  解答：通过调试
+  requestAnimationFrame 这个是 属于 宏任务，所以 在 两个 执行的时候，是属于 不同的 event loop里的，requestIdleCallback 这个也是 一样的，只是 这个 优先级 特别低，任务比较忙的 时候，可能不会执行；
+    
+*/
+const root = document.getElementById("root");
+function fun(){
+  let id1,id2;
+  console.log("1111111========");
+  id1 = requestAnimationFrame(function(){
+    console.log(1);
+    console.log(id1);
+    root.innerHTML = "test1";
+  });
+  console.log("========");
+  root.innerHTML = "========";
+  setTimeout(function(){ 
+    console.log("setTimeout");
+    root.innerHTML = "setTimeout"; 
+  },100);
+
+  Promise.resolve("resolve").then(res=>{
+    console.log("resolve");
+    root.innerHTML = "resolve"; 
+  });;
+
+  requestIdleCallback(function(){
+    console.log("requestIdleCallback");
+    root.innerHTML = "requestIdleCallback"; 
+  });
+
+  id2 = requestAnimationFrame(function(){
+    console.log(2);
+    console.log(id2);
+    root.innerHTML = "test2";
+  });
+}
+fun();
 window.requestIdleCallback = window.requestIdleCallback || function(handler) {
   let startTime = Date.now();
  
@@ -49,6 +90,7 @@ function runTaskQueue(deadline) {
   }
  
   if (taskList.length) {
+    console.log("进来过没");
     taskHandle = requestIdleCallback(runTaskQueue, { timeout: 1000} );
   } else {
     taskHandle = 0;
@@ -85,7 +127,8 @@ function updateDisplay() {
   }
  
   statusRefreshScheduled = false;
-}function log(text) {
+}
+function log(text) {
   if (!logFragment) {
       logFragment = document.createDocumentFragment();
   }

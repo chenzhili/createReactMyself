@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>测试 新的 任务调度的 方法</title>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script>
+        /* 
+            对于 requestIdleCallback 的 注意点；
+            1、这个在  event loop 中 paint 完成后，如果 还剩余 时间才会 执行，说明这个是在 最后执行，但是在 微任务的 前面执行；
+            2、在这个里面 最好 不要 直接 操作 document 上的 DOM 修改，因为当前的 event loop已经完成，可能会导致 当前的卡顿；解决办法： 用 requestAnimationFrame 回调，在 下一个 event loop 开始的时候 执行；
+            3、这个空闲 时间 做的 事 不确定性 太高，注意  使用 上 的问题；
+            
+        */
+        let container = null;
+        /* 基本的 idle callback 的 东西 */
+        const idleConfig = (function (window) {
+            const taskList = [];
+            let taskHandle = null;
+            let tempDOM = null;
+            window.requestIdleCallback = window.requestIdleCallback || function (handler) {
+                let startTime = Date.now();
+
+                return setTimeout(function () {
+                    handler({
+                        didTimeout: false,
+                        timeRemaining: function () {
+                            return Math.max(0, 50.0 - (Date.now() - startTime));
+                        }
+                    });
+                }, 1);
+            };
+            // 前面是兼容性============================================
+
+            window.cancelIdleCallback = window.cancelIdleCallback || function (id) {
+                clearTimeout(id);
+            };
+            function enqueueTask(taskHandler, taskData) {
+                taskList.push({
+                    handler: taskHandler,
+                    data: taskData
+                });
+
+                // 这里 是为了 在当前 加入任务，就 放入回到
+                if (!taskHandle) {
+                    taskHandle = requestIdleCallback(runTaskQueue, { timeout: 1000 });
+                }
+
+            }
+            function runTaskQueue(deadline) {
+                // 当回调函数是由于超时才得以执行的话，deadline.didTimeout为true
+                console.log(deadline.didTimeout);
+                while ((deadline.timeRemaining() > 0 || deadline.didTimeout) && taskList.length) {
+                    let task = taskList.shift();
+
+                    tempDOM = task.handler(task.data);
+
+                    refreshHTMLDOM();
+                }
+
+                // 这里是为了 处理 在 当前 handle 没处理完的时候，如果 全部 处理完全，这里不会被触发；
+                if (taskList.length) {
+                    taskHandle = requestIdleCallback(runTaskQueue, { timeout: 1000 });
+                } else {
+                    taskHandle = 0;
+                }
+            }
+
+            // 刷新 到 DOM 页面上
+            function updateDisplay() {
+                container && container.appendChild(tempDOM);
+            }
+            function refreshHTMLDOM() {
+                requestAnimationFrame(updateDisplay);
+            }
+            return {
+                enqueueTask,
+                runTaskQueue
+            }
+        })(window);
+        // 做一个 随机数
+        function getNum(start, end) {
+            start = Math.floor(start);
+            end = Math.ceil(end);
+            return parseInt(Math.random() * ((end - start) + 1) + start);
+        }
+
+        // 主要的 DOM 添入 js 中
+        function idleCallback() {
+            const fragment = document.createDocumentFragment();
+            let n = getNum(2, 6);
+            while (n--) {
+                const p = document.createElement("p");
+                p.innerHTML = `idle${n}`;
+                fragment.appendChild(p);
+            }
+            return fragment;
+        }
+    </script>
+    <script>
+
+        window.onload = function () {
+            let n = 100,
+                time = null;
+            container = document.getElementById("root");
+            function beginFrame(fn) {
+                if (n <= 0) { return; }
+                fn();
+                // 闲暇时 的 入口
+                idleConfig.enqueueTask(idleCallback);
+                n--;
+                time = setTimeout(function () {
+                    beginFrame(fn);
+                }, 100);
+            }
+
+            function runRender() {
+                //这里 控制 让 event loop 没有 闲暇 时间，让 deadline.didTimeout 为 true，值为 1000 的 时候 就会 出现了；
+                let paramN = 1;
+                while (paramN--) {
+                    const div = document.createElement("div");
+                    div.innerHTML = `test${n}`;
+                    container.appendChild(div);
+                }
+            }
+            beginFrame(runRender);
+        }
+    </script>
+</body>
+
+</html>

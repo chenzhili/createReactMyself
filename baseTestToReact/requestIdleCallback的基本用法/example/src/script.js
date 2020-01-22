@@ -34,6 +34,7 @@ function enqueueTask(taskHandler, taskData) {
   totalTaskCount++;
  
   if (!taskHandle) {
+    /* 这里的 第二参数 是为了，当这个 浏览器一直 没有 空闲时间执行这个 回调时，就会在 固定的 timeout 时间内 强制 执行； */
     taskHandle = requestIdleCallback(runTaskQueue, { timeout: 1000 });
   }
  
